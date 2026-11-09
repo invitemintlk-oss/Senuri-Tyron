@@ -34,6 +34,9 @@ export const INVITATION = {
   ],
 } as const;
 
+/** Live site URL — used for guest invite links and share previews. */
+export const SITE_URL = "https://senuri-tyron-weddinginvitation.vercel.app";
+
 /** Google Apps Script Web App URL (see code.gs / code.ts). */
 export const GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbyyGHwxJ1Gex_yuFlLtITR5rtFm-_b3U7jPfxvR5xMYk5JMeJt0vHZDkNHFsKmGg01q/exec";

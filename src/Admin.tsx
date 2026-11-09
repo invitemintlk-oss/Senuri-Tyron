@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, Link as LinkIcon, MessageSquare, Sparkles } from 'lucide-react';
-import { INVITATION, GUEST_PREFIXES, GuestPrefix, buildDisplayName, buildInviteLink, cleanName } from './config';
+import { INVITATION, SITE_URL, GUEST_PREFIXES, GuestPrefix, buildDisplayName, buildInviteLink, cleanName } from './config';
 
 type Generated = { displayName: string; link: string; message: string };
 
@@ -64,7 +64,7 @@ export default function Admin() {
     }
     setError('');
     const displayName = buildDisplayName(prefix, guestName);
-    const link = buildInviteLink(window.location.origin, displayName);
+    const link = buildInviteLink(SITE_URL, displayName);
     setGenerated({ displayName, link, message: buildMessage(displayName, link) });
   };
 
@@ -81,7 +81,7 @@ export default function Admin() {
     'w-full p-4 rounded-xl border border-[#C0C0C0] focus:outline-none focus:border-[#6B8BA4] bg-[#F7F8FA] text-[#333333] font-medium transition-colors';
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] px-4 py-8 md:p-12 font-sans text-[#4A4F55]">
+    <div className="h-[100dvh] overflow-y-auto overscroll-contain bg-[#F7F8FA] px-4 py-8 md:p-12 font-sans text-[#4A4F55]">
       <div className="max-w-3xl mx-auto bg-white p-6 md:p-12 rounded-3xl shadow-xl border border-[#6B8BA4]/20">
         <h1 className="text-4xl text-center font-playball text-[#6B8BA4] mb-2">
           {INVITATION.couple.bride} &amp; {INVITATION.couple.groom}
