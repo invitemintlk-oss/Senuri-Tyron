@@ -2,45 +2,10 @@ import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, MapPin, Calendar, Clock, Send, ChevronDown, Heart, ChevronRight, Lock, Leaf, HeartCrack, User, Pen, Volume2, Flower2, UtensilsCrossed, Music } from "lucide-react";
 import { FlyingButterflies } from "./FlyingButterflies";
+import { INVITATION, GOOGLE_SCRIPT_URL as googleScriptUrl, getGuestDisplayNameFromUrl } from "./config";
 
-const INVITATION = {
-  couple: {
-    bride: "Senuri",
-    groom: "Tyron",
-    brideParents: "Mr. & Mrs. Alwis",
-    groomParents: "Mr. & Mrs. Antony",
-  },
-  date: {
-    displayNumeric: "16 . 01 . 2027",
-    displayLong: "January 16",
-    countdownTarget: "January 16, 2027 15:30:00",
-  },
-  time: {
-    ceremony: "3.30 PM",
-    reception: "7.00 PM",
-  },
-  church: {
-    name: "St. Joseph's Church",
-    city: "Grandpass",
-    googleMapsLink: "https://maps.google.com/?q=St.+Joseph's+Church,+Grandpass,+Colombo",
-  },
-  venue: {
-    name: "Hotel Royal Ramesses",
-    hall: "Nefertiti Queen Ballroom",
-    address: "Negombo - Colombo Main Road, Seeduwa",
-    city: "Seeduwa",
-    mapQuery: "Hotel Royal Ramesses, Seeduwa",
-    googleMapsLink: "https://maps.google.com/?q=Hotel+Royal+Ramesses,+Seeduwa",
-  },
-  rsvpBy: "31 December 2026",
-  rsvpContacts: [
-    "Malshan - 075 600 9837 / 071 234 4006",
-    "Senuri - 071 410 6398 / 076 343 0300",
-  ],
-} as const;
 
 const backgroundMusic = "/Nim Him Sewwa  Romantic Live Violin & Piano Cover  Shahen Thilakaratne.mp3";
-const googleScriptUrl = "https://script.google.com/macros/s/AKfycbwcajHelaqARkvE1KU8wHoPGpaXiI5zFqBHJWz694WKc3B_LJs68Wr8HkgCMBOufIQ/exec";
 
 const publicImagePath = (fileName: string) => `/images/${fileName.replaceAll(" ", "%20")}`;
 
@@ -195,7 +160,7 @@ export default function WeddingInvitation() {
   const [isOpened, setIsOpened] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [rsvpForm, setRsvpForm] = useState({
-    name: "",
+    name: getGuestDisplayNameFromUrl(),
     guests: "1",
   });
   const [wishForm, setWishForm] = useState({
@@ -207,10 +172,8 @@ export default function WeddingInvitation() {
   const audioRef = React.useRef<HTMLAudioElement>(null);
   const introVideoRef = React.useRef<HTMLVideoElement>(null);
 
-  const searchParams = new URLSearchParams(window.location.search);
-  const guestPrefix = searchParams.get('prefix');
-  const guestName = searchParams.get('name');
-  const hasGuestInfo = guestPrefix && guestName;
+  const [guestDisplayName] = useState(getGuestDisplayNameFromUrl);
+  const hasGuestInfo = Boolean(guestDisplayName);
 
   const submitToGoogleSheet = async (payload: Record<string, string>) => {
     if (!googleScriptUrl) {
@@ -354,8 +317,9 @@ export default function WeddingInvitation() {
                       transition={{ duration: 1, delay: 1 }}
                       className="mb-8 flex flex-col items-center"
                     >
-                      <p className="font-playball text-4xl md:text-5xl text-[#9A9EA3] drop-shadow-md mb-2">Dear {guestPrefix} {guestName}</p>
-                      <p className="font-cinzel text-xs md:text-sm text-white/80 tracking-[0.2em] uppercase mt-2 drop-shadow-sm">We cordially invite you to</p>
+                      <p className="font-cinzel text-xs md:text-sm text-white/80 tracking-[0.2em] uppercase mb-3 drop-shadow-sm">We cordially invite</p>
+                      <p className="font-playball text-4xl md:text-5xl text-white drop-shadow-md break-words max-w-[90vw]">{guestDisplayName}</p>
+                      <p className="font-cinzel text-xs md:text-sm text-white/80 tracking-[0.2em] uppercase mt-3 drop-shadow-sm">to celebrate our special day with us</p>
                     </motion.div>
                   )}
 
@@ -960,6 +924,9 @@ export default function WeddingInvitation() {
                             <div className="space-y-3">
                               <h4 className="text-[#4A4F55] font-bold text-[10px] uppercase tracking-[0.5em] font-cinzel">Reception · {INVITATION.time.reception}</h4>
                               <p className="text-xl md:text-2xl text-[#4A4F55] font-cinzel leading-relaxed tracking-wide font-bold">
+                                {INVITATION.venue.name}
+                              </p>
+                              <p className="text-base md:text-lg text-[#4A4F55] font-cinzel tracking-wide">
                                 {INVITATION.venue.hall}
                               </p>
                               <p className="text-sm text-[#4A4F55]/80 font-cinzel tracking-wide">

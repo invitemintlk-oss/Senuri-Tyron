@@ -1,42 +1,74 @@
 /**
- * Google Apps Script Web App for Wedding RSVP + Wishes
+ * Google Apps Script Web App – Senuri & Tyron Wedding RSVP + Wishes
  *
  * Spreadsheet:
- * https://docs.google.com/spreadsheets/d/1OC7BZcG99km0et4jKVgRK5Db-g9chXAseLQp6jFooRE/edit
+ * https://docs.google.com/spreadsheets/d/1SoP490Qcj3XDAmfId4YTo9ypxJn0CH3PCthnN4q5Pj4/edit
  *
- * Required sheets:
- * - rsvp
- * - wish
+ * The "RSVP" and "Wishes" sheets (with formatted headers) are created
+ * automatically on the first submission. You can also run `setup()` once
+ * from the Apps Script editor to create them straight away.
+ *
+ * Deploy: Deploy → New deployment → Web app
+ *   Execute as: Me   |   Who has access: Anyone
+ * Then put the /exec URL into VITE_GOOGLE_SCRIPT_URL (website .env / Vercel).
  */
 
-const SPREADSHEET_ID = "1OC7BZcG99km0et4jKVgRK5Db-g9chXAseLQp6jFooRE";
-const RSVP_SHEET_NAME = "rsvp";
-const WISH_SHEET_NAME = "wish";
+const SPREADSHEET_ID = "1SoP490Qcj3XDAmfId4YTo9ypxJn0CH3PCthnN4q5Pj4";
+const TIMEZONE = "Asia/Colombo";
+
+const SHEETS = {
+  rsvp: {
+    name: "RSVP",
+    headers: ["Timestamp", "Name", "Attendance"],
+    widths: [180, 260, 140],
+  },
+  wish: {
+    name: "Wishes",
+    headers: ["Timestamp", "Name", "Message"],
+    widths: [180, 220, 520],
+  },
+};
+
+const HEADER_BG = "#6B8BA4";
+const HEADER_FG = "#FFFFFF";
+
+/* ------------------------------------------------------------------ */
+/* Entry points                                                        */
+/* ------------------------------------------------------------------ */
 
 function doPost(e) {
   return handleRequest_(e);
 }
 
 function doGet(e) {
+  const params = (e && e.parameter) || {};
+  if (!params.action) {
+    return jsonResponse_({ ok: true, message: "Senuri & Tyron wedding API is running" });
+  }
   return handleRequest_(e);
 }
 
+/** Run once manually from the editor to create both sheets with headers. */
+function setup() {
+  getSheet_(SHEETS.rsvp);
+  getSheet_(SHEETS.wish);
+}
+
+/* ------------------------------------------------------------------ */
+/* Request handling                                                    */
+/* ------------------------------------------------------------------ */
+
 function handleRequest_(e) {
+  const lock = LockService.getScriptLock();
   try {
+    lock.waitLock(10000);
+
     const params = parseParams_(e);
     const action = String(params.action || "").trim().toLowerCase();
 
-    if (!action) {
-      return jsonResponse_({ ok: false, message: "Missing action" });
-    }
-
-    if (action === "rsvp") {
-      return jsonResponse_(saveRsvp_(params));
-    }
-
-    if (action === "wish") {
-      return jsonResponse_(saveWish_(params));
-    }
+    if (!action) return jsonResponse_({ ok: false, message: "Missing action" });
+    if (action === "rsvp") return jsonResponse_(saveRsvp_(params));
+    if (action === "wish" || action === "wishes") return jsonResponse_(saveWish_(params));
 
     return jsonResponse_({ ok: false, message: "Invalid action" });
   } catch (error) {
@@ -44,90 +76,107 @@ function handleRequest_(e) {
       ok: false,
       message: error && error.message ? error.message : "Unexpected error",
     });
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (ignored) {}
   }
 }
 
 function saveRsvp_(params) {
-  const sheet = getSheet_(RSVP_SHEET_NAME);
-
-  ensureHeader_(sheet, [
-    "timestamp",
-    "name",
-    "attendance"
-  ]);
-
-  const name = String(params.name || "").trim();
-  const guests = String(params.guests || "").trim();
-
-  if (!name) {
-    return { ok: false, message: "Name is required" };
-  }
+  const name = clean_(params.name, 200);
+  if (!name) return { ok: false, message: "Name is required" };
 
   // The website sends guests = "1" for attending, "0" for declining
-  const attendance = guests === "0" ? "No" : "Yes";
+  const guests = String(params.guests || "").trim();
+  const attendance = guests === "0" ? "Not Attending" : "Attending";
 
-  sheet.appendRow([
-    new Date(),
-    name,
-    attendance
-  ]);
+  const sheet = getSheet_(SHEETS.rsvp);
+  sheet.appendRow([timestamp_(), name, attendance]);
 
   return { ok: true, message: "RSVP saved" };
 }
 
 function saveWish_(params) {
-  const sheet = getSheet_(WISH_SHEET_NAME);
+  const name = clean_(params.name, 200);
+  const message = clean_(params.message, 5000);
+  if (!name || !message) return { ok: false, message: "Name and message are required" };
 
-  ensureHeader_(sheet, ["timestamp", "name", "message"]);
-
-  const name = String(params.name || "").trim();
-  const message = String(params.message || "").trim();
-
-  if (!name || !message) {
-    return { ok: false, message: "Name and message are required" };
-  }
-
-  sheet.appendRow([new Date(), name, message]);
+  const sheet = getSheet_(SHEETS.wish);
+  sheet.appendRow([timestamp_(), name, message]);
 
   return { ok: true, message: "Wish saved" };
 }
 
-function getSheet_(sheetName) {
+/* ------------------------------------------------------------------ */
+/* Sheet helpers                                                       */
+/* ------------------------------------------------------------------ */
+
+/** Returns the sheet, creating it and its header row if needed. */
+function getSheet_(config) {
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
-  let sheet = spreadsheet.getSheetByName(sheetName);
+  let sheet = spreadsheet.getSheetByName(config.name);
 
   if (!sheet) {
-    sheet = spreadsheet.insertSheet(sheetName);
+    sheet = spreadsheet.insertSheet(config.name);
   }
 
+  ensureHeaders_(sheet, config);
   return sheet;
 }
 
-function ensureHeader_(sheet, headers) {
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(headers);
+function ensureHeaders_(sheet, config) {
+  const headers = config.headers;
+  const headerRange = sheet.getRange(1, 1, 1, headers.length);
+  const current = headerRange.getValues()[0];
+  const matches = headers.every(function (h, i) {
+    return String(current[i]) === h;
+  });
+  if (matches) return;
+
+  if (sheet.getLastRow() > 0 && current.join("") !== "") {
+    // Row 1 holds data, not headers – push it down instead of overwriting.
+    sheet.insertRowBefore(1);
   }
+
+  headerRange
+    .setValues([headers])
+    .setFontWeight("bold")
+    .setFontColor(HEADER_FG)
+    .setBackground(HEADER_BG)
+    .setHorizontalAlignment("center");
+  sheet.setFrozenRows(1);
+
+  config.widths.forEach(function (w, i) {
+    sheet.setColumnWidth(i + 1, w);
+  });
+  sheet.getRange(2, headers.length, sheet.getMaxRows() - 1, 1).setWrap(true);
+}
+
+/* ------------------------------------------------------------------ */
+/* Utilities                                                           */
+/* ------------------------------------------------------------------ */
+
+function timestamp_() {
+  return Utilities.formatDate(new Date(), TIMEZONE, "yyyy-MM-dd HH:mm:ss");
+}
+
+/** Trim, cap length, and neutralise spreadsheet formula injection. */
+function clean_(value, maxLength) {
+  let text = String(value == null ? "" : value).trim().slice(0, maxLength);
+  if (/^[=+\-@]/.test(text)) text = "'" + text;
+  return text;
 }
 
 function parseParams_(e) {
   const params = Object.assign({}, (e && e.parameter) || {});
-
-  if (!(e && e.postData && e.postData.contents)) {
-    return params;
-  }
-
-  const contents = String(e.postData.contents || "").trim();
-  if (!contents) {
-    return params;
-  }
+  const contents = e && e.postData && e.postData.contents ? String(e.postData.contents).trim() : "";
+  if (!contents) return params;
 
   if (contents.charAt(0) === "{") {
-    const json = JSON.parse(contents);
-    return Object.assign(params, json);
+    return Object.assign(params, JSON.parse(contents));
   }
-
-  const parsed = parseFormEncoded_(contents);
-  return Object.assign(params, parsed);
+  return Object.assign(params, parseFormEncoded_(contents));
 }
 
 function parseFormEncoded_(raw) {
@@ -139,16 +188,14 @@ function parseFormEncoded_(raw) {
     var parts = pairs[i].split("=");
     var key = decodeURIComponent((parts[0] || "").replace(/\+/g, " "));
     var value = decodeURIComponent((parts.slice(1).join("=") || "").replace(/\+/g, " "));
-    if (key) {
-      result[key] = value;
-    }
+    if (key) result[key] = value;
   }
 
   return result;
 }
 
 function jsonResponse_(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(
+    ContentService.MimeType.JSON
+  );
 }
