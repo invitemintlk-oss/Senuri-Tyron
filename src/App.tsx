@@ -5,7 +5,7 @@ import { FlyingButterflies } from "./FlyingButterflies";
 import { INVITATION, GOOGLE_SCRIPT_URL as googleScriptUrl, getGuestDisplayNameFromUrl } from "./config";
 
 
-const backgroundMusic = "/Nim Him Sewwa  Romantic Live Violin & Piano Cover  Shahen Thilakaratne.mp3";
+const backgroundMusic = "/Ed Sheeran - Perfect.mp3";
 
 const publicImagePath = (fileName: string) => `/images/${fileName.replaceAll(" ", "%20")}`;
 
