@@ -34,13 +34,9 @@ export const INVITATION = {
   ],
 } as const;
 
-/**
- * Google Apps Script Web App URL (see code.gs).
- * Set VITE_GOOGLE_SCRIPT_URL in .env / Vercel env vars after deploying the script.
- */
+/** Google Apps Script Web App URL (see code.gs / code.ts). */
 export const GOOGLE_SCRIPT_URL =
-  import.meta.env.VITE_GOOGLE_SCRIPT_URL ||
-  "https://script.google.com/macros/s/AKfycbwcajHelaqARkvE1KU8wHoPGpaXiI5zFqBHJWz694WKc3B_LJs68Wr8HkgCMBOufIQ/exec";
+  "https://script.google.com/macros/s/AKfycbyyGHwxJ1Gex_yuFlLtITR5rtFm-_b3U7jPfxvR5xMYk5JMeJt0vHZDkNHFsKmGg01q/exec";
 
 export const GUEST_PREFIXES = ["Mr.", "Mrs.", "Miss", "Mr. & Mrs.", "Family", "Dear"] as const;
 export type GuestPrefix = (typeof GUEST_PREFIXES)[number];
